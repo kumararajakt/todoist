@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Todoist
+GenericName=Task Manager
+Comment=A modern task management application
+Exec=/home/kumar/Projects/todoist/build/bin/todoist
+Icon=org.kde.todoist
+Terminal=false
+Categories=Office;ProjectManagement;Qt;KDE;
+Keywords=todo;task;productivity;project;management;
+StartupNotify=true
+StartupWMClass=todoist
+MimeType=text/x-todo;
