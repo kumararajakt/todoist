@@ -9,6 +9,7 @@
 #include <QStringLiteral>
 #include <QStringView>
 #include <qlogging.h>
+#include <qstringview.h>
 
 TodoModel::TodoModel(QObject *parent, QSqlDatabase db)
     : QSqlTableModel(parent, db)
@@ -16,6 +17,7 @@ TodoModel::TodoModel(QObject *parent, QSqlDatabase db)
     setTable(QStringLiteral("tasks"));
     setEditStrategy(QSqlTableModel::OnManualSubmit);
     this->sort(getColumnIndex(QStringLiteral("created_at")), Qt::DescendingOrder);
+    this->setFilter(QStringLiteral("is_completed = 0"));
     select();
 }
 
@@ -559,7 +561,7 @@ void TodoModel::applyFilters()
     }
 
     // Status filter
-    if (m_currentFilter == QStringLiteral("active")) {
+    if (m_currentFilter == QStringLiteral("active") || m_currentFilter != QStringLiteral("completed")) {
         conditions << QStringLiteral("is_completed = 0");
     } else if (m_currentFilter == QStringLiteral("completed")) {
         conditions << QStringLiteral("is_completed = 1");
@@ -569,6 +571,8 @@ void TodoModel::applyFilters()
     if (!m_searchText.isEmpty()) {
         conditions << QStringLiteral("(content LIKE '%%1%' OR description LIKE '%%1%')").arg(m_searchText);
     }
+
+    qWarning() << "Conditions: " << conditions << m_currentFilter;
 
     QString filterString = conditions.join(QStringLiteral(" AND "));
     setFilter(filterString);

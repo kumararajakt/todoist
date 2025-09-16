@@ -129,9 +129,11 @@ void SystemTrayManager::checkForDueReminders()
 
     for (int i = 0; i < m_todoModel->rowCount(); i++) {
         auto dueDateStr = m_todoModel->data(m_todoModel->index(i, 0), TodoModel::DueDateRole).toString();
+        if (dueDateStr.trimmed().isEmpty())
+            continue;
         auto content = m_todoModel->data(m_todoModel->index(i, 0), TodoModel::ContentRole).toString();
         auto dueDate = QDateTime::fromString(dueDateStr);
-
+        qDebug() << "dueDateStr" << dueDateStr << "content" << content << "dueDate" << dueDate;
         // Check if task is due within the next hour
         if (dueDate >= now && dueDate <= oneHourLater) {
             QString timeString = dueDate.toString(QStringLiteral("hh:mm"));
