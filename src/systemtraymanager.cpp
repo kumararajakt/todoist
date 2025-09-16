@@ -151,7 +151,7 @@ void SystemTrayManager::createTrayIcon()
     m_trayIcon = new QSystemTrayIcon(this);
 
     // Set icon - you might want to add a proper icon file
-    QIcon icon = QIcon::fromTheme(QStringLiteral("todoist"));
+    QIcon icon = QIcon::fromTheme(QStringLiteral("org.kde.todoist"));
     if (icon.isNull()) {
         // Fallback to a simple colored icon
         QPixmap pixmap(16, 16);
