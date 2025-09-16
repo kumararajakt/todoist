@@ -56,7 +56,14 @@ public:
     addSubtask(int parentTaskId, const QString &content, const QString &description = QString(), const QDateTime &dueDate = QDateTime(), int priority = 1);
     void loadSubtaskCounts(Task *task);
 
+    // Database access
+    QSqlDatabase database() const
+    {
+        return m_database;
+    }
+
 private:
     bool createTables();
+    void migrateDatabaseSchema();
     QSqlDatabase m_database;
 };

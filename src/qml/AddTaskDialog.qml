@@ -1,7 +1,8 @@
-import QtQuick 2.15
+import QtQuick
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 import org.kde.kirigami 2.19 as Kirigami
+import org.kde.todoist 1.0
 
 Kirigami.Dialog {
     id: dialog
@@ -21,7 +22,7 @@ Kirigami.Dialog {
             let startDate = repeatSettings.isRecurring ? repeatSettings.repeatStartDate : new Date(0);
             let endDate = repeatSettings.repeatEndType === "on" ? repeatSettings.repeatEndDate : new Date(0);
             
-            todoModel.addTask(
+            TodoModel.addTask(
                 contentField.text.trim(),
                 descriptionField.text.trim(),
                 dueDate,

@@ -26,7 +26,6 @@ public:
     void setVisible(bool visible);
 
     void setTodoModel(TodoModel *model);
-    void setDatabaseManager(DatabaseManager *dbManager);
 
     // Invokable methods for QML
     Q_INVOKABLE void showNotification(const QString &title, const QString &message, int timeout = 5000);
@@ -62,6 +61,5 @@ private:
     QTimer *m_reminderTimer;
 
     TodoModel *m_todoModel;
-    DatabaseManager *m_dbManager;
     bool m_visible;
 };

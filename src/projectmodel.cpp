@@ -1,36 +1,38 @@
 #include "projectmodel.h"
+#include <QDebug>
+#include <QObject>
+#include <QSqlError>
+#include <QSqlField>
+#include <QSqlQuery>
+#include <QSqlRecord>
+#include <qstringliteral.h>
 
 ProjectModel::ProjectModel(QObject *parent)
-    : QAbstractListModel(parent)
+    : QSqlTableModel(parent)
 {
-}
-
-int ProjectModel::rowCount(const QModelIndex &parent) const
-{
-    Q_UNUSED(parent)
-    return m_projects.size();
+    setTable(QStringLiteral("projects"));
+    setEditStrategy(QSqlTableModel::OnManualSubmit);
+    select();
 }
 
 QVariant ProjectModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() >= m_projects.size())
+    if (!index.isValid())
         return QVariant();
-
-    Project *project = m_projects.at(index.row());
 
     switch (role) {
     case IdRole:
-        return project->id();
+        return QSqlTableModel::data(this->index(index.row(), getColumnIndex(QStringLiteral("id"))), Qt::DisplayRole);
     case UserIdRole:
-        return project->userId();
+        return QSqlTableModel::data(this->index(index.row(), getColumnIndex(QStringLiteral("user_id"))), Qt::DisplayRole);
     case NameRole:
-        return project->name();
+        return QSqlTableModel::data(this->index(index.row(), getColumnIndex(QStringLiteral("name"))), Qt::DisplayRole);
     case ColorRole:
-        return project->color();
+        return QSqlTableModel::data(this->index(index.row(), getColumnIndex(QStringLiteral("color"))), Qt::DisplayRole);
     case IsFavoriteRole:
-        return project->isFavorite();
+        return QSqlTableModel::data(this->index(index.row(), getColumnIndex(QStringLiteral("is_favorite"))), Qt::DisplayRole);
     default:
-        return QVariant();
+        return QSqlTableModel::data(index, role);
     }
 }
 
@@ -45,90 +47,107 @@ QHash<int, QByteArray> ProjectModel::roleNames() const
     return roles;
 }
 
-bool ProjectModel::addProject(const QString &name, const QString &color, bool isFavorite)
+bool ProjectModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
-    if (!m_dbManager || name.isEmpty())
+    if (!index.isValid())
         return false;
 
-    Project *project = new Project(this);
-    project->setName(name);
-    project->setColor(color.isEmpty() ? QStringLiteral("#3498db") : color);
-    project->setIsFavorite(isFavorite);
-
-    if (m_dbManager->addProject(project)) {
-        loadProjects();
-        return true;
+    switch (role) {
+    case NameRole:
+        return QSqlTableModel::setData(this->index(index.row(), getColumnIndex(QStringLiteral("name"))), value, Qt::EditRole);
+    case ColorRole:
+        return QSqlTableModel::setData(this->index(index.row(), getColumnIndex(QStringLiteral("color"))), value, Qt::EditRole);
+    case IsFavoriteRole:
+        return QSqlTableModel::setData(this->index(index.row(), getColumnIndex(QStringLiteral("is_favorite"))), value, Qt::EditRole);
+    case UserIdRole:
+        return QSqlTableModel::setData(this->index(index.row(), getColumnIndex(QStringLiteral("user_id"))), value, Qt::EditRole);
+    default:
+        return QSqlTableModel::setData(index, value, role);
     }
+}
 
-    delete project;
-    return false;
+bool ProjectModel::addProject(const QString &name, const QString &color, bool isFavorite)
+{
+    if (name.isEmpty())
+        return false;
+
+    QSqlRecord record = this->record();
+    record.setValue(QStringLiteral("name"), name);
+    record.setValue(QStringLiteral("color"), color.isEmpty() ? QStringLiteral("#3498db") : color);
+    record.setValue(QStringLiteral("is_favorite"), isFavorite);
+    record.setValue(QStringLiteral("user_id"), 1); // Default user_id
+
+    bool success = insertRecord(-1, record);
+    if (success) {
+        submitAll();
+    }
+    return success;
 }
 
 bool ProjectModel::updateProject(int projectId, const QString &name, const QString &color, bool isFavorite)
 {
-    if (!m_dbManager)
+    if (name.isEmpty())
         return false;
 
-    Project *project = m_dbManager->getProject(projectId);
-    if (!project)
-        return false;
-
-    project->setName(name);
-    project->setColor(color);
-    project->setIsFavorite(isFavorite);
-
-    bool success = m_dbManager->updateProject(project);
-    if (success) {
-        loadProjects();
+    // Find the row with the given projectId
+    for (int row = 0; row < rowCount(); ++row) {
+        if (data(index(row, getColumnIndex(QStringLiteral("id"))), Qt::DisplayRole).toInt() == projectId) {
+            setData(index(row, getColumnIndex(QStringLiteral("name"))), name, Qt::EditRole);
+            setData(index(row, getColumnIndex(QStringLiteral("color"))), color, Qt::EditRole);
+            setData(index(row, getColumnIndex(QStringLiteral("is_favorite"))), isFavorite, Qt::EditRole);
+            return submitAll();
+        }
     }
-
-    delete project;
-    return success;
+    return false;
 }
 
 bool ProjectModel::deleteProject(int projectId)
 {
-    if (!m_dbManager)
-        return false;
-
-    if (m_dbManager->deleteProject(projectId)) {
-        loadProjects();
-        return true;
+    // Find the row with the given projectId
+    for (int row = 0; row < rowCount(); ++row) {
+        if (data(index(row, getColumnIndex(QStringLiteral("id"))), Qt::DisplayRole).toInt() == projectId) {
+            removeRow(row);
+            return submitAll();
+        }
     }
-
     return false;
 }
 
 void ProjectModel::refresh()
 {
-    loadProjects();
+    select();
 }
 
-Project *ProjectModel::getProject(int projectId)
+QVariantMap ProjectModel::getProject(int projectId)
 {
-    if (!m_dbManager)
-        return nullptr;
+    QVariantMap project;
 
-    return m_dbManager->getProject(projectId);
+    // Find the row with the given projectId
+    for (int row = 0; row < rowCount(); ++row) {
+        if (data(index(row, getColumnIndex(QStringLiteral("id"))), Qt::DisplayRole).toInt() == projectId) {
+            QSqlRecord rec = record(row);
+            for (int i = 0; i < rec.count(); ++i) {
+                project[rec.fieldName(i)] = rec.value(i);
+            }
+            break;
+        }
+    }
+    return project;
 }
 
-void ProjectModel::setDatabaseManager(DatabaseManager *dbManager)
+void ProjectModel::initializeDatabase()
 {
-    m_dbManager = dbManager;
-    loadProjects();
+    // Database initialization is handled by the database connection
+    // This method can be used for any additional setup if needed
+    select();
 }
 
-void ProjectModel::loadProjects()
+int ProjectModel::getColumnIndex(const QString &columnName) const
 {
-    if (!m_dbManager)
-        return;
-
-    beginResetModel();
-
-    qDeleteAll(m_projects);
-    m_projects.clear();
-
-    m_projects = m_dbManager->getProjects();
-
-    endResetModel();
+    for (int i = 0; i < columnCount(); ++i) {
+        if (headerData(i, Qt::Horizontal, Qt::DisplayRole).toString() == columnName) {
+            return i;
+        }
+    }
+    return -1;
 }

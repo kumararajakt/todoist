@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as Controls
@@ -10,11 +12,12 @@ Kirigami.OverlayDrawer {
     modal: false
     signal projectSelected(int projectId)
     signal filterSelected(string filter)
+    required property var projectModel
+    required property var addProjectDialog
 
     leftPadding: 0
     rightPadding: 0
     topPadding: 0
-    edge: Qt.application.layoutDirection == Qt.RightToLeft ? Qt.RightEdge : Qt.LeftEdge
     handleClosedIcon.source: null
     handleOpenIcon.source: null
 
@@ -49,18 +52,20 @@ Kirigami.OverlayDrawer {
                     icon.name: "list-add-symbolic"
 
                     onClicked: {
-                        addProjectDialog.open();
+                        drawer.addProjectDialog.open();
                     }
 
                     // ToolTip.delay: Kirigami.Units.toolTipDelay
-                    // ToolTip.visible: hovered
-                    // ToolTip.text: qsTr("Add Project")
+                    Controls.ToolTip.visible: hovered
+                    Controls.ToolTip.text: qsTr("Add Project")
                 }
             }
         }
 
-        Repeater {
+        ListView {
+            id: projectCustomList
             Layout.fillWidth: true
+            Layout.preferredHeight: contentHeight
 
             model: [
                 {
@@ -81,14 +86,20 @@ Kirigami.OverlayDrawer {
             ]
 
             delegate: PlaceItem {
-                text: modelData.name
+                id: projectCustomListDelegate
+                // required property string name
+                required property string name
+                required property string filter
+                required property int index
 
-                action: Kirigami.Action {
-                    onTriggered: {
-                        drawer.filterSelected(modelData.filter);
-                        if (drawer.modal) {
-                            drawer.close();
-                        }
+                text: name
+
+                onClicked: {
+                    drawer.filterSelected(filter);
+                    projectCustomList.currentIndex = index;
+                    projectListView.currentIndex = -1;
+                    if (drawer.modal) {
+                        drawer.close();
                     }
                 }
             }
@@ -102,19 +113,31 @@ Kirigami.OverlayDrawer {
         }
 
         ListView {
-            model: projectModel
+            id: projectListView
+            model: drawer.projectModel
             Layout.fillHeight: true
             Layout.fillWidth: true
 
             delegate: PlaceItem {
+                required property string name
+                required property int id
+                required property int index
+
                 text: name
                 onClicked: {
+                    projectCustomList.currentIndex = -1;
+                    projectListView.currentIndex = index;
                     drawer.projectSelected(id);
                     if (drawer.modal) {
                         drawer.close();
                     }
                 }
             }
+        }
+
+        Component.onCompleted: {
+            drawer.filterSelected("today");
+            projectListView.currentIndex = -1;
         }
     }
 

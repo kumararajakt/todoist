@@ -38,7 +38,12 @@ bool DatabaseManager::initialize()
         return false;
     }
 
-    return createTables();
+    bool result = createTables();
+    if (result) {
+        // Check if we need to migrate existing database
+        migrateDatabaseSchema();
+    }
+    return result;
 }
 
 bool DatabaseManager::createTables()
@@ -74,6 +79,16 @@ bool DatabaseManager::createTables()
                                    "repeat_end_date DATETIME,"
                                    "repeat_end_count INTEGER DEFAULT 0,"
                                    "current_repeat_count INTEGER DEFAULT 0,"
+                                   "pomodoro_count INTEGER DEFAULT 0,"
+                                   "pomodoro_target INTEGER DEFAULT 4,"
+                                   "pomodoro_length INTEGER DEFAULT 25,"
+                                   "short_break_length INTEGER DEFAULT 5,"
+                                   "long_break_length INTEGER DEFAULT 15,"
+                                   "pomodoro_enabled BOOLEAN DEFAULT 0,"
+                                   "pomodoro_active BOOLEAN DEFAULT 0,"
+                                   "total_time_spent INTEGER DEFAULT 0,"
+                                   "time_tracking_active BOOLEAN DEFAULT 0,"
+                                   "time_tracking_started DATETIME,"
                                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
                                    "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,"
                                    "FOREIGN KEY (project_id) REFERENCES projects(id),"
@@ -120,8 +135,10 @@ bool DatabaseManager::addTask(Task *task)
     QSqlQuery query(m_database);
     query.prepare(QStringLiteral(
         "INSERT INTO tasks (project_id, parent_task_id, content, description, due_date, priority, is_completed, "
-        "is_recurring, repeat_interval, repeat_frequency, repeat_start_date, repeat_end_type, repeat_end_date, repeat_end_count, current_repeat_count) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"));
+        "is_recurring, repeat_interval, repeat_frequency, repeat_start_date, repeat_end_type, repeat_end_date, repeat_end_count, current_repeat_count, "
+        "pomodoro_count, pomodoro_target, pomodoro_length, short_break_length, long_break_length, pomodoro_enabled, pomodoro_active, "
+        "total_time_spent, time_tracking_active, time_tracking_started) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"));
     query.addBindValue(task->projectId());
     query.addBindValue(task->parentTaskId() > 0 ? task->parentTaskId() : QVariant());
     query.addBindValue(task->content());
@@ -137,6 +154,16 @@ bool DatabaseManager::addTask(Task *task)
     query.addBindValue(task->repeatEndDate());
     query.addBindValue(task->repeatEndCount());
     query.addBindValue(task->currentRepeatCount());
+    query.addBindValue(task->pomodoroCount());
+    query.addBindValue(task->pomodoroTarget());
+    query.addBindValue(task->pomodoroLength());
+    query.addBindValue(task->shortBreakLength());
+    query.addBindValue(task->longBreakLength());
+    query.addBindValue(task->pomodoroEnabled());
+    query.addBindValue(task->pomodoroActive());
+    query.addBindValue(task->totalTimeSpent());
+    query.addBindValue(task->timeTrackingActive());
+    query.addBindValue(task->timeTrackingStarted());
 
     if (query.exec()) {
         task->setId(query.lastInsertId().toInt());
@@ -154,7 +181,9 @@ bool DatabaseManager::updateTask(Task *task)
         QStringLiteral("UPDATE tasks SET project_id=?, content=?, description=?, due_date=?, "
                        "priority=?, is_completed=?, is_recurring=?, repeat_interval=?, repeat_frequency=?, "
                        "repeat_start_date=?, repeat_end_type=?, repeat_end_date=?, repeat_end_count=?, "
-                       "current_repeat_count=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"));
+                       "current_repeat_count=?, pomodoro_count=?, pomodoro_target=?, pomodoro_length=?, "
+                       "short_break_length=?, long_break_length=?, pomodoro_enabled=?, pomodoro_active=?, "
+                       "total_time_spent=?, time_tracking_active=?, time_tracking_started=?, updated_at=CURRENT_TIMESTAMP WHERE id=?"));
     query.addBindValue(task->projectId());
     query.addBindValue(task->content());
     query.addBindValue(task->description());
@@ -169,6 +198,16 @@ bool DatabaseManager::updateTask(Task *task)
     query.addBindValue(task->repeatEndDate());
     query.addBindValue(task->repeatEndCount());
     query.addBindValue(task->currentRepeatCount());
+    query.addBindValue(task->pomodoroCount());
+    query.addBindValue(task->pomodoroTarget());
+    query.addBindValue(task->pomodoroLength());
+    query.addBindValue(task->shortBreakLength());
+    query.addBindValue(task->longBreakLength());
+    query.addBindValue(task->pomodoroEnabled());
+    query.addBindValue(task->pomodoroActive());
+    query.addBindValue(task->totalTimeSpent());
+    query.addBindValue(task->timeTrackingActive());
+    query.addBindValue(task->timeTrackingStarted());
     query.addBindValue(task->id());
 
     return query.exec();
@@ -213,6 +252,16 @@ QList<Task *> DatabaseManager::getTasks(int projectId)
         task->setRepeatEndDate(query.value("repeat_end_date").toDateTime());
         task->setRepeatEndCount(query.value("repeat_end_count").toInt());
         task->setCurrentRepeatCount(query.value("current_repeat_count").toInt());
+        task->setPomodoroCount(query.value("pomodoro_count").toInt());
+        task->setPomodoroTarget(query.value("pomodoro_target").toInt());
+        task->setPomodoroLength(query.value("pomodoro_length").toInt());
+        task->setShortBreakLength(query.value("short_break_length").toInt());
+        task->setLongBreakLength(query.value("long_break_length").toInt());
+        task->setPomodoroEnabled(query.value("pomodoro_enabled").toBool());
+        task->setPomodoroActive(query.value("pomodoro_active").toBool());
+        task->setTotalTimeSpent(query.value("total_time_spent").toInt());
+        task->setTimeTrackingActive(query.value("time_tracking_active").toBool());
+        task->setTimeTrackingStarted(query.value("time_tracking_started").toDateTime());
         task->setCreatedAt(query.value("created_at").toDateTime());
         task->setUpdatedAt(query.value("updated_at").toDateTime());
         task->setLabels(getTaskLabels(task->id()));
@@ -252,6 +301,16 @@ QList<Task *> DatabaseManager::getTasksByFilter(const QString &filter)
         task->setDueDate(query.value("due_date").toDateTime());
         task->setPriority(query.value("priority").toInt());
         task->setIsCompleted(query.value("is_completed").toBool());
+        task->setPomodoroCount(query.value("pomodoro_count").toInt());
+        task->setPomodoroTarget(query.value("pomodoro_target").toInt());
+        task->setPomodoroLength(query.value("pomodoro_length").toInt());
+        task->setShortBreakLength(query.value("short_break_length").toInt());
+        task->setLongBreakLength(query.value("long_break_length").toInt());
+        task->setPomodoroEnabled(query.value("pomodoro_enabled").toBool());
+        task->setPomodoroActive(query.value("pomodoro_active").toBool());
+        task->setTotalTimeSpent(query.value("total_time_spent").toInt());
+        task->setTimeTrackingActive(query.value("time_tracking_active").toBool());
+        task->setTimeTrackingStarted(query.value("time_tracking_started").toDateTime());
         task->setCreatedAt(query.value("created_at").toDateTime());
         task->setUpdatedAt(query.value("updated_at").toDateTime());
         task->setLabels(getTaskLabels(task->id()));
@@ -276,6 +335,16 @@ Task *DatabaseManager::getTask(int taskId)
         task->setDueDate(query.value("due_date").toDateTime());
         task->setPriority(query.value("priority").toInt());
         task->setIsCompleted(query.value("is_completed").toBool());
+        task->setPomodoroCount(query.value("pomodoro_count").toInt());
+        task->setPomodoroTarget(query.value("pomodoro_target").toInt());
+        task->setPomodoroLength(query.value("pomodoro_length").toInt());
+        task->setShortBreakLength(query.value("short_break_length").toInt());
+        task->setLongBreakLength(query.value("long_break_length").toInt());
+        task->setPomodoroEnabled(query.value("pomodoro_enabled").toBool());
+        task->setPomodoroActive(query.value("pomodoro_active").toBool());
+        task->setTotalTimeSpent(query.value("total_time_spent").toInt());
+        task->setTimeTrackingActive(query.value("time_tracking_active").toBool());
+        task->setTimeTrackingStarted(query.value("time_tracking_started").toDateTime());
         task->setCreatedAt(query.value("created_at").toDateTime());
         task->setUpdatedAt(query.value("updated_at").toDateTime());
         task->setLabels(getTaskLabels(task->id()));
@@ -544,4 +613,47 @@ void DatabaseManager::loadSubtaskCounts(Task *task)
 
     task->setSubtaskCount(totalSubtasks);
     task->setCompletedSubtaskCount(completedSubtasks);
+}
+
+void DatabaseManager::migrateDatabaseSchema()
+{
+    QSqlQuery query(m_database);
+
+    // Check if pomodoro columns exist, if not add them
+    query.exec(QStringLiteral("PRAGMA table_info(tasks)"));
+    QStringList columnNames;
+    while (query.next()) {
+        columnNames << query.value(1).toString(); // column name is at index 1
+    }
+
+    if (!columnNames.contains(QStringLiteral("pomodoro_count"))) {
+        query.exec(QStringLiteral("ALTER TABLE tasks ADD COLUMN pomodoro_count INTEGER DEFAULT 0"));
+    }
+    if (!columnNames.contains(QStringLiteral("pomodoro_target"))) {
+        query.exec(QStringLiteral("ALTER TABLE tasks ADD COLUMN pomodoro_target INTEGER DEFAULT 4"));
+    }
+    if (!columnNames.contains(QStringLiteral("pomodoro_length"))) {
+        query.exec(QStringLiteral("ALTER TABLE tasks ADD COLUMN pomodoro_length INTEGER DEFAULT 25"));
+    }
+    if (!columnNames.contains(QStringLiteral("short_break_length"))) {
+        query.exec(QStringLiteral("ALTER TABLE tasks ADD COLUMN short_break_length INTEGER DEFAULT 5"));
+    }
+    if (!columnNames.contains(QStringLiteral("long_break_length"))) {
+        query.exec(QStringLiteral("ALTER TABLE tasks ADD COLUMN long_break_length INTEGER DEFAULT 15"));
+    }
+    if (!columnNames.contains(QStringLiteral("pomodoro_enabled"))) {
+        query.exec(QStringLiteral("ALTER TABLE tasks ADD COLUMN pomodoro_enabled BOOLEAN DEFAULT 0"));
+    }
+    if (!columnNames.contains(QStringLiteral("pomodoro_active"))) {
+        query.exec(QStringLiteral("ALTER TABLE tasks ADD COLUMN pomodoro_active BOOLEAN DEFAULT 0"));
+    }
+    if (!columnNames.contains(QStringLiteral("total_time_spent"))) {
+        query.exec(QStringLiteral("ALTER TABLE tasks ADD COLUMN total_time_spent INTEGER DEFAULT 0"));
+    }
+    if (!columnNames.contains(QStringLiteral("time_tracking_active"))) {
+        query.exec(QStringLiteral("ALTER TABLE tasks ADD COLUMN time_tracking_active BOOLEAN DEFAULT 0"));
+    }
+    if (!columnNames.contains(QStringLiteral("time_tracking_started"))) {
+        query.exec(QStringLiteral("ALTER TABLE tasks ADD COLUMN time_tracking_started DATETIME"));
+    }
 }

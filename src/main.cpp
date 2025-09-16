@@ -1,8 +1,8 @@
 #include <QApplication>
 #include <QGuiApplication>
-#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQmlEngine>
 #include <QQuickWindow>
 #include <QTimer>
 
@@ -28,28 +28,34 @@ int main(int argc, char *argv[])
     }
 
     // Create models
-    TodoModel todoModel;
-    ProjectModel projectModel;
+    TodoModel todoModel(nullptr, dbManager.database());
+    // ProjectModel projectModel(nullptr, dbManager.database());
     LabelModel labelModel;
 
-    // Set database manager for all models
-    todoModel.setDatabaseManager(&dbManager);
-    projectModel.setDatabaseManager(&dbManager);
+    // Initialize models and set database manager for LabelModel
+    todoModel.initializeDatabase();
+    // projectModel.initializeDatabase();
     labelModel.setDatabaseManager(&dbManager);
 
     // Create system tray manager
     SystemTrayManager systemTrayManager;
     systemTrayManager.setTodoModel(&todoModel);
-    systemTrayManager.setDatabaseManager(&dbManager);
 
     QQmlApplicationEngine engine;
 
-    // Register models with QML
-    engine.rootContext()->setContextProperty(QStringLiteral("todoModel"), &todoModel);
-    engine.rootContext()->setContextProperty(QStringLiteral("projectModel"), &projectModel);
-    engine.rootContext()->setContextProperty(QStringLiteral("labelModel"), &labelModel);
-    engine.rootContext()->setContextProperty(QStringLiteral("dbManager"), &dbManager);
-    engine.rootContext()->setContextProperty(QStringLiteral("systemTrayManager"), &systemTrayManager);
+    // Register QML types
+    qmlRegisterType<TodoModel>("org.kde.todoist", 1, 0, "TodoModel");
+    qmlRegisterType<ProjectModel>("org.kde.todoist", 1, 0, "ProjectModel");
+    qmlRegisterType<LabelModel>("org.kde.todoist", 1, 0, "LabelModel");
+    qmlRegisterType<DatabaseManager>("org.kde.todoist", 1, 0, "DatabaseManager");
+    qmlRegisterType<SystemTrayManager>("org.kde.todoist", 1, 0, "SystemTrayManager");
+
+    // Set context properties for the models
+    // engine.rootContext()->setContextProperty(QStringLiteral("todoModel"), &todoModel);
+    // engine.rootContext()->setContextProperty(QStringLiteral("projectModel"), &projectModel);
+    // engine.rootContext()->setContextProperty(QStringLiteral("labelModel"), &labelModel);
+    // engine.rootContext()->setContextProperty(QStringLiteral("dbManager"), &dbManager);
+    // engine.rootContext()->setContextProperty(QStringLiteral("systemTrayManager"), &systemTrayManager);
 
     engine.loadFromModule("org.kde.todoist", u"Main");
 
@@ -78,13 +84,6 @@ int main(int argc, char *argv[])
         // Enable system tray if available
         if (systemTrayManager.isSystemTrayAvailable()) {
             systemTrayManager.setVisible(true);
-
-            // Show welcome notification
-            QTimer::singleShot(2000, [&systemTrayManager]() {
-                systemTrayManager.showNotification(QStringLiteral("TodoApp Started"),
-                                                   QStringLiteral("TodoApp is running in the system tray. Click the tray icon to show the window."),
-                                                   5000);
-            });
         }
     }
 

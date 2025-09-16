@@ -1,11 +1,15 @@
 #pragma once
 
-#include "databasemanager.h"
-#include "project.h"
-#include <QAbstractListModel>
+#include <QDateTime>
+#include <QObject>
 #include <QQmlEngine>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QSqlRecord>
+#include <QSqlTableModel>
+#include <qstringliteral.h>
 
-class ProjectModel : public QAbstractListModel
+class ProjectModel : public QSqlTableModel
 {
     Q_OBJECT
     QML_ELEMENT
@@ -21,23 +25,20 @@ public:
 
     explicit ProjectModel(QObject *parent = nullptr);
 
-    // QAbstractListModel interface
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    // QSqlTableModel interface
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
+    bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
 
     // Invokable methods
     Q_INVOKABLE bool addProject(const QString &name, const QString &color = QString(), bool isFavorite = false);
     Q_INVOKABLE bool updateProject(int projectId, const QString &name, const QString &color, bool isFavorite);
     Q_INVOKABLE bool deleteProject(int projectId);
     Q_INVOKABLE void refresh();
-    Q_INVOKABLE Project *getProject(int projectId);
+    Q_INVOKABLE QVariantMap getProject(int projectId);
 
-    void setDatabaseManager(DatabaseManager *dbManager);
+    void initializeDatabase();
 
 private:
-    void loadProjects();
-
-    QList<Project *> m_projects;
-    DatabaseManager *m_dbManager = nullptr;
+    int getColumnIndex(const QString &columnName) const;
 };

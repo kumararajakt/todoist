@@ -32,6 +32,18 @@ class Task : public QObject
     Q_PROPERTY(QDateTime repeatEndDate READ repeatEndDate WRITE setRepeatEndDate NOTIFY repeatEndDateChanged)
     Q_PROPERTY(int repeatEndCount READ repeatEndCount WRITE setRepeatEndCount NOTIFY repeatEndCountChanged)
     Q_PROPERTY(int currentRepeatCount READ currentRepeatCount WRITE setCurrentRepeatCount NOTIFY currentRepeatCountChanged)
+    Q_PROPERTY(int pomodoroCount READ pomodoroCount WRITE setPomodoroCount NOTIFY pomodoroCountChanged)
+    Q_PROPERTY(int pomodoroTarget READ pomodoroTarget WRITE setPomodoroTarget NOTIFY pomodoroTargetChanged)
+    Q_PROPERTY(int pomodoroLength READ pomodoroLength WRITE setPomodoroLength NOTIFY pomodoroLengthChanged)
+    Q_PROPERTY(int shortBreakLength READ shortBreakLength WRITE setShortBreakLength NOTIFY shortBreakLengthChanged)
+    Q_PROPERTY(int longBreakLength READ longBreakLength WRITE setLongBreakLength NOTIFY longBreakLengthChanged)
+    Q_PROPERTY(bool pomodoroEnabled READ pomodoroEnabled WRITE setPomodoroEnabled NOTIFY pomodoroEnabledChanged)
+    Q_PROPERTY(bool pomodoroActive READ pomodoroActive WRITE setPomodoroActive NOTIFY pomodoroActiveChanged)
+
+    // Time tracking properties
+    Q_PROPERTY(int totalTimeSpent READ totalTimeSpent WRITE setTotalTimeSpent NOTIFY totalTimeSpentChanged)
+    Q_PROPERTY(bool timeTrackingActive READ timeTrackingActive WRITE setTimeTrackingActive NOTIFY timeTrackingActiveChanged)
+    Q_PROPERTY(QDateTime timeTrackingStarted READ timeTrackingStarted WRITE setTimeTrackingStarted NOTIFY timeTrackingStartedChanged)
 
 public:
     explicit Task(QObject *parent = nullptr);
@@ -166,6 +178,74 @@ public:
     }
     void setCurrentRepeatCount(int count);
 
+    int pomodoroCount() const
+    {
+        return m_pomodoroCount;
+    }
+    void setPomodoroCount(int count);
+
+    int pomodoroTarget() const
+    {
+        return m_pomodoroTarget;
+    }
+    void setPomodoroTarget(int target);
+
+    int pomodoroLength() const
+    {
+        return m_pomodoroLength;
+    }
+    void setPomodoroLength(int length);
+
+    int shortBreakLength() const
+    {
+        return m_shortBreakLength;
+    }
+    void setShortBreakLength(int length);
+
+    int longBreakLength() const
+    {
+        return m_longBreakLength;
+    }
+    void setLongBreakLength(int length);
+
+    bool pomodoroEnabled() const
+    {
+        return m_pomodoroEnabled;
+    }
+    void setPomodoroEnabled(bool enabled);
+
+    bool pomodoroActive() const
+    {
+        return m_pomodoroActive;
+    }
+    void setPomodoroActive(bool active);
+
+    // Time tracking methods
+    int totalTimeSpent() const
+    {
+        return m_totalTimeSpent;
+    }
+    void setTotalTimeSpent(int timeSpent);
+
+    bool timeTrackingActive() const
+    {
+        return m_timeTrackingActive;
+    }
+    void setTimeTrackingActive(bool active);
+
+    QDateTime timeTrackingStarted() const
+    {
+        return m_timeTrackingStarted;
+    }
+    void setTimeTrackingStarted(const QDateTime &startTime);
+
+    // Time tracking utility methods
+    Q_INVOKABLE void startTimeTracking();
+    Q_INVOKABLE void stopTimeTracking();
+    Q_INVOKABLE void pauseTimeTracking();
+    Q_INVOKABLE int getCurrentSessionTime() const;
+    Q_INVOKABLE QString formatTimeSpent(int seconds) const;
+
 Q_SIGNALS:
     void idChanged();
     void projectIdChanged();
@@ -189,6 +269,16 @@ Q_SIGNALS:
     void repeatEndDateChanged();
     void repeatEndCountChanged();
     void currentRepeatCountChanged();
+    void pomodoroCountChanged();
+    void pomodoroTargetChanged();
+    void pomodoroLengthChanged();
+    void shortBreakLengthChanged();
+    void longBreakLengthChanged();
+    void pomodoroEnabledChanged();
+    void pomodoroActiveChanged();
+    void totalTimeSpentChanged();
+    void timeTrackingActiveChanged();
+    void timeTrackingStartedChanged();
 
 private:
     int m_id = -1;
@@ -212,4 +302,16 @@ private:
     QDateTime m_repeatEndDate;
     int m_repeatEndCount = 0;
     int m_currentRepeatCount = 0;
+    int m_pomodoroCount = 0;
+    int m_pomodoroTarget = 4; // Default: 4 pomodoros per task
+    int m_pomodoroLength = 25; // Default: 25 minutes
+    int m_shortBreakLength = 5; // Default: 5 minutes
+    int m_longBreakLength = 15; // Default: 15 minutes
+    bool m_pomodoroEnabled = false;
+    bool m_pomodoroActive = false;
+
+    // Time tracking member variables
+    int m_totalTimeSpent = 0; // Total time spent in seconds
+    bool m_timeTrackingActive = false;
+    QDateTime m_timeTrackingStarted;
 };

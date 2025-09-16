@@ -11,11 +11,18 @@ qt_add_qml_module(todoist_static
     qml/ProjectSidebar.qml
     qml/AddTaskDialog.qml
     qml/AddProjectDialog.qml
-    qml/TaskDetailDialog.qml
+    qml/TaskDetailPage.qml
     qml/SystemTrayWidget.qml
     qml/NotificationOverlay.qml
     qml/SubtaskDialog.qml
     qml/RepeatSettingsCard.qml
+    qml/MoveTaskDialog.qml
+    qml/DatePickerDialog.qml
+    qml/DatePicker.qml
+    qml/PomodoroTimer.qml
+    qml/PomodoroManager.qml
+    qml/PomodoroSettingsDialog.qml
+    qml/TimeTracker.qml
 )
 
 target_sources(todoist_static PUBLIC

@@ -1,11 +1,11 @@
 #include "systemtraymanager.h"
 #include "databasemanager.h"
-#include "task.h"
 #include "todomodel.h"
 #include <QApplication>
 #include <QDateTime>
 #include <QDebug>
 #include <QObject>
+#include <qsystemtrayicon.h>
 
 SystemTrayManager::SystemTrayManager(QObject *parent)
     : QObject(parent)
@@ -17,9 +17,9 @@ SystemTrayManager::SystemTrayManager(QObject *parent)
     , m_addTaskAction(nullptr)
     , m_reminderTimer(nullptr)
     , m_todoModel(nullptr)
-    , m_dbManager(nullptr)
     , m_visible(true)
 {
+    qDebug() << "SystemTrayManager::SystemTrayManager" << QSystemTrayIcon::isSystemTrayAvailable();
     if (QSystemTrayIcon::isSystemTrayAvailable()) {
         createTrayIcon();
         createContextMenu();
@@ -58,11 +58,6 @@ void SystemTrayManager::setVisible(bool visible)
 void SystemTrayManager::setTodoModel(TodoModel *model)
 {
     m_todoModel = model;
-}
-
-void SystemTrayManager::setDatabaseManager(DatabaseManager *dbManager)
-{
-    m_dbManager = dbManager;
 }
 
 void SystemTrayManager::showNotification(const QString &title, const QString &message, int timeout)
@@ -121,7 +116,7 @@ void SystemTrayManager::onQuitApplication()
 
 void SystemTrayManager::checkForDueReminders()
 {
-    if (!m_dbManager) {
+    if (!m_todoModel) {
         return;
     }
 
@@ -131,23 +126,22 @@ void SystemTrayManager::checkForDueReminders()
 
     // This would need to be implemented in DatabaseManager
     // For now, we'll use a simple approach
-    auto tasks = m_dbManager->getTasks(); // Get all tasks
 
-    for (Task *task : tasks) {
-        if (task && !task->isCompleted() && task->dueDate().isValid()) {
-            QDateTime dueDate = task->dueDate();
+    for (int i = 0; i < m_todoModel->rowCount(); i++) {
+        auto dueDateStr = m_todoModel->data(m_todoModel->index(i, 0), TodoModel::DueDateRole).toString();
+        auto content = m_todoModel->data(m_todoModel->index(i, 0), TodoModel::ContentRole).toString();
+        auto dueDate = QDateTime::fromString(dueDateStr);
 
-            // Check if task is due within the next hour
-            if (dueDate >= now && dueDate <= oneHourLater) {
-                QString timeString = dueDate.toString(QStringLiteral("hh:mm"));
-                showReminderNotification(task->content(), timeString);
-            }
+        // Check if task is due within the next hour
+        if (dueDate >= now && dueDate <= oneHourLater) {
+            QString timeString = dueDate.toString(QStringLiteral("hh:mm"));
+            showReminderNotification(content, timeString);
+        }
 
-            // Check if task is overdue
-            else if (dueDate < now) {
-                QString overdueString = QStringLiteral("overdue");
-                showReminderNotification(task->content(), overdueString);
-            }
+        // Check if task is overdue
+        else if (dueDate < now) {
+            QString overdueString = QStringLiteral("overdue");
+            showReminderNotification(content, overdueString);
         }
     }
 }
@@ -171,6 +165,7 @@ void SystemTrayManager::createTrayIcon()
     connect(m_trayIcon, &QSystemTrayIcon::activated, this, &SystemTrayManager::onTrayIconActivated);
 
     connect(m_trayIcon, &QSystemTrayIcon::messageClicked, this, &SystemTrayManager::onShowMainWindow);
+    m_trayIcon->show();
 }
 
 void SystemTrayManager::createContextMenu()
@@ -181,23 +176,9 @@ void SystemTrayManager::createContextMenu()
 
     m_trayMenu = new QMenu();
 
-    m_showAction = new QAction(QStringLiteral("&Show TodoApp"), this);
-    connect(m_showAction, &QAction::triggered, this, &SystemTrayManager::onShowMainWindow);
-
-    m_hideAction = new QAction(QStringLiteral("&Hide TodoApp"), this);
-    connect(m_hideAction, &QAction::triggered, this, &SystemTrayManager::onHideMainWindow);
-
-    m_addTaskAction = new QAction(QStringLiteral("&Add Task"), this);
-    connect(m_addTaskAction, &QAction::triggered, this, &SystemTrayManager::onShowMainWindow);
-
     m_quitAction = new QAction(QStringLiteral("&Quit"), this);
     connect(m_quitAction, &QAction::triggered, this, &SystemTrayManager::onQuitApplication);
 
-    m_trayMenu->addAction(m_showAction);
-    m_trayMenu->addAction(m_hideAction);
-    m_trayMenu->addSeparator();
-    m_trayMenu->addAction(m_addTaskAction);
-    m_trayMenu->addSeparator();
     m_trayMenu->addAction(m_quitAction);
 
     m_trayIcon->setContextMenu(m_trayMenu);
