@@ -1,0 +1,34 @@
+[Global]
+IconName=org.kde.todoist
+Name=TodoApp
+Comment=TodoApp Task Manager
+Comment[en_US]=TodoApp Task Manager
+DesktopEntry=org.kde.todoist
+
+[Event/taskReminder]
+Name=TodoApp
+Name[en_US]=TodoApp
+Comment=A task is due or overdue
+Comment[en_US]=A task is due or overdue
+Action=Popup
+
+[Event/general]
+Name=General Notification
+Name[en_US]=General Notification
+Comment=General application notifications
+Comment[en_US]=General application notifications
+Action=Popup
+
+[Event/taskCompleted]
+Name=Task Completed
+Name[en_US]=Task Completed
+Comment=A task has been completed
+Comment[en_US]=A task has been completed
+Action=Popup
+
+[Event/taskSnoozed]
+Name=Task Snoozed
+Name[en_US]=Task Snoozed
+Comment=A task has been snoozed
+Comment[en_US]=A task has been snoozed
+Action=Popup

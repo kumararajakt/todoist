@@ -7,10 +7,12 @@ import org.kde.kirigami 2.19 as Kirigami
 Kirigami.ScrollablePage {
     id: taskListViewPage
 
-    signal taskSelected(var task)
+    signal taskSelected(var task, bool isTimerRequested)
     required property var todoModel
     required property var projectModel
     required property var addTaskDialog
+
+    property int currentTaskId: -1
 
     title: {
         if (todoModel.currentFilter) {
@@ -45,13 +47,38 @@ Kirigami.ScrollablePage {
         Kirigami.Action {
             text: "Add Task"
             icon.name: "list-add"
-            onTriggered: taskListViewPage.addTaskDialog.open()
+            onTriggered: {
+                addTaskField.visible = true;
+                searchField.visible = checked;
+            }
         },
         Kirigami.Action {
             text: "Search"
             icon.name: "search"
             checkable: true
-            onToggled: searchField.visible = checked
+            onToggled: {
+                addTaskField.visible = false;
+                searchField.visible = checked;
+            }
+        },
+        Kirigami.Action {
+            text: "Show Completed"
+            icon.name: "filter"
+            checkable: true
+            checked: {
+                if (taskListViewPage.todoModel.currentFilter === "completed") {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            onTriggered: {
+                if (checked) {
+                    taskListViewPage.todoModel.currentFilter = "completed";
+                } else {
+                    taskListViewPage.todoModel.currentFilter = "";
+                }
+            }
         }
     ]
 
@@ -76,37 +103,52 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             visible: searchField.visible
         }
+
+        Kirigami.ActionTextField {
+            id: addTaskField
+            placeholderText: "Add task..."
+            Layout.fillWidth: true
+            Layout.margins: Kirigami.Units.largeSpacing
+
+            onAccepted: {
+                if (text.trim() !== "") {
+                    taskListViewPage.todoModel.addTask({
+                        "content": text
+                    });
+                    addTaskField.visible = false;
+                }
+            }
+            visible: false
+        }
+
+        Kirigami.Separator {
+            Layout.fillWidth: true
+            visible: addTaskField.visible
+        }
     }
-
-
 
     ListView {
         id: listView
+        Layout.fillHeight: true
+        Layout.fillWidth: true
 
         model: taskListViewPage.todoModel
         spacing: 1
-        section.property: "isCompleted"
-        section.delegate: Kirigami.ListSectionHeader {
-            Layout.fillWidth: true
-            text: (listView.section === 1) ? "COMPLETED" : "INPROGRESS"
-            Component.onCompleted: {
-                console.log("Section: ", listView.section);
-            }
-        }
+
         delegate: TaskItem {
             width: listView.width
             required property var model
             required property int index
             projectModel: taskListViewPage.projectModel
-            
+
             // Time tracking properties
-            totalTimeSpent: model.totalTimeSpent || 0
-            timeTrackingActive: model.timeTrackingActive || false
-            timeTrackingStarted: model.timeTrackingStarted || new Date()
+            // totalTimeSpent: model.totalTimeSpent || 0
+            // timeTrackingActive: model.timeTrackingActive || false
+            // timeTrackingStarted: model.timeTrackingStarted || new Date()
 
             onClicked: {
                 let selectedData = taskListViewPage.todoModel.get(index);
-                taskListViewPage.taskSelected(JSON.parse(JSON.stringify(selectedData)));
+                taskListViewPage.taskSelected(JSON.parse(JSON.stringify(selectedData)), false);
             }
 
             onToggleCompleted: {
@@ -114,20 +156,13 @@ Kirigami.ScrollablePage {
             }
 
             onDeleteTask: {
-                taskListViewPage.todoModel.deleteTask(model.id);
+                taskListViewPage.currentTaskId = model.id;
+                deleteConfirmationDialog.open();
             }
-            
+
             onStartTimerRequested: {
-                console.log("Timer start requested for task:", model.id);
-                // The actual time tracking is handled by the Task object methods
-                // This signal can be used for additional UI updates if needed
-                taskListViewPage.todoModel.setData(taskListViewPage.todoModel.index(index, 0), true, taskListViewPage.todoModel.TimeTrackingStartedRole)
-
-            }
-
-            Component.onCompleted: {
-                console.log("TaskItem completed", model.dueDate);
-                taskListViewPage.checkForReminder(model.dueDate);
+                let selectedData = taskListViewPage.todoModel.get(index);
+                taskListViewPage.taskSelected(JSON.parse(JSON.stringify(selectedData)), true);
             }
         }
 
@@ -155,16 +190,19 @@ Kirigami.ScrollablePage {
                 text: "Add Task"
                 icon.name: "list-add"
 
-                onTriggered: taskListViewPage.addTaskDialog.open()
             }
         }
     }
 
-    function checkForReminder(dueDate) {
-        const now = new Date();
-        const dueDateTime = new Date(dueDate);
-        if (dueDateTime && dueDateTime < now) {
-            systemTray.showMessage("Task Due", "Task is due today");
+    // Delete confirmation dialog
+    Kirigami.PromptDialog {
+        id: deleteConfirmationDialog
+        title: "Delete Task"
+        subtitle: "Are you sure you want to delete this task?"
+        standardButtons: Kirigami.Dialog.Ok | Kirigami.Dialog.Cancel
+
+        onAccepted: {
+            taskListViewPage.todoModel.deleteTask(taskListViewPage.currentTaskId);
         }
     }
 }

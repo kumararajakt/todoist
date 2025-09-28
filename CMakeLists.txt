@@ -41,7 +41,7 @@ set(QT_EXTRA_COMPONENTS)
 list(APPEND QT_EXTRA_COMPONENTS Widgets)
 
 find_package(Qt6 ${QT6_MIN_VERSION} REQUIRED COMPONENTS Core Gui Qml QuickControls2 Widgets Quick Svg Sql ${QT_EXTRA_COMPONENTS})
-find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS Kirigami CoreAddons Config I18n)
+find_package(KF6 ${KF6_MIN_VERSION} REQUIRED COMPONENTS Kirigami CoreAddons Config I18n Notifications)
 
 qt_policy(SET QTP0001 NEW)
 
@@ -57,6 +57,9 @@ add_subdirectory(src)
 
 install(FILES org.kde.todoist.desktop DESTINATION ${KDE_INSTALL_APPDIR})
 install(FILES todoist.png DESTINATION ${KDE_INSTALL_FULL_ICONDIR}/hicolor/256x256/apps RENAME org.kde.todoist.png)
+install(FILES org.kde.todoist.notifyrc DESTINATION ${KDE_INSTALL_KNOTIFYRCDIR})
+install(FILES TodoApp.notifyrc DESTINATION ${KDE_INSTALL_KNOTIFYRCDIR})
+
 ki18n_install(po)
 
 feature_summary(WHAT ALL INCLUDE_QUIET_PACKAGES FATAL_ON_MISSING_REQUIRED_PACKAGES)

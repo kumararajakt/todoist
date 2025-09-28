@@ -1,11 +1,12 @@
 #include "projectmodel.h"
+
 #include <QDebug>
 #include <QObject>
 #include <QSqlError>
 #include <QSqlField>
 #include <QSqlQuery>
 #include <QSqlRecord>
-#include <qstringliteral.h>
+#include <QStringLiteral>
 
 ProjectModel::ProjectModel(QObject *parent)
     : QSqlTableModel(parent)

@@ -18,21 +18,17 @@ ItemDelegate {
     required property var id
     required property var content
     required property var description
-    required property var labels
-    required property bool hasSubtasks
-    required property int completedSubtaskCount
-    required property int subtaskCount
-    required property bool pomodoroEnabled
-    required property int pomodoroCount
-    required property int pomodoroTarget
-    required property bool isRecurring
-    required property string repeatFrequency
-    required property string repeatInterval
-    required property int priority
-    required property int projectId
-    required property int totalTimeSpent
-    required property bool timeTrackingActive
-    required property var timeTrackingStarted
+    // required property bool pomodoroEnabled
+    // required property int pomodoroCount
+    // required property int pomodoroTarget
+    // required property bool isRecurring
+    // required property string repeatFrequency
+    // required property string repeatInterval
+    // required property int priority
+    // required property int projectId
+    // required property int totalTimeSpent
+    // required property bool timeTrackingActive
+    // required property var timeTrackingStarted
 
     // required property var pauseTimeTracking
     // required property var startTimeTracking
@@ -48,7 +44,7 @@ ItemDelegate {
     
     // Time tracking function
     function startTimer() {
-        taskItem.timeTrackingStarted = true;
+        // taskItem.timeTrackingStarted = true;
 
         // if (timeTrackingActive) {
         //     // If already active, pause the timer
@@ -261,48 +257,48 @@ ItemDelegate {
                 }
 
                 // Recurring indicator
-                Kirigami.Icon {
-                    visible: taskItem.isRecurring
-                    source: "view-refresh"
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                    color: Kirigami.Theme.highlightColor
+                // Kirigami.Icon {
+                //     visible: taskItem.isRecurring
+                //     source: "view-refresh"
+                //     Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                //     Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                //     color: Kirigami.Theme.highlightColor
                     
-                    ToolTip.visible: recurringMouseArea.containsMouse
-                    ToolTip.text: "Recurring task: every " + taskItem.repeatFrequency + " " + taskItem.repeatInterval
+                //     ToolTip.visible: recurringMouseArea.containsMouse
+                //     ToolTip.text: "Recurring task: every " + taskItem.repeatFrequency + " " + taskItem.repeatInterval
                     
-                    MouseArea {
-                        id: recurringMouseArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                    }
-                }
+                //     MouseArea {
+                //         id: recurringMouseArea
+                //         anchors.fill: parent
+                //         hoverEnabled: true
+                //     }
+                // }
 
-                // Priority indicator
-                Rectangle {
-                    visible:    taskItem.priority >= 3
-                    width: Kirigami.Units.iconSizes.small
-                    height: Kirigami.Units.iconSizes.small
-                    radius: width / 2
-                    color: {
-                        switch (taskItem.priority) {
-                        case 4:
-                            return Kirigami.Theme.negativeTextColor; // High
-                        case 3:
-                            return Kirigami.Theme.neutralTextColor; // Medium-High
-                        default:
-                            return Kirigami.Theme.disabledTextColor;
-                        }
-                    }
+                // // Priority indicator
+                // Rectangle {
+                //     visible:    taskItem.priority >= 3
+                //     width: Kirigami.Units.iconSizes.small
+                //     height: Kirigami.Units.iconSizes.small
+                //     radius: width / 2
+                //     color: {
+                //         switch (taskItem.priority) {
+                //         case 4:
+                //             return Kirigami.Theme.negativeTextColor; // High
+                //         case 3:
+                //             return Kirigami.Theme.neutralTextColor; // Medium-High
+                //         default:
+                //             return Kirigami.Theme.disabledTextColor;
+                //         }
+                //     }
 
-                    Kirigami.Icon {
-                        anchors.centerIn: parent
-                        width: parent.width * 0.6
-                        height: parent.height * 0.6
-                        source: "emblem-important"
-                        color: "white"
-                    }
-                }
+                //     Kirigami.Icon {
+                //         anchors.centerIn: parent
+                //         width: parent.width * 0.6
+                //         height: parent.height * 0.6
+                //         source: "emblem-important"
+                //         color: "white"
+                //     }
+                // }
             }
         }
 

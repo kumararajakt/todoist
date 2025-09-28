@@ -1,271 +1,316 @@
-import QtQuick 2.15
-import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import org.kde.kirigami 2.19 as Kirigami
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
+import org.kde.kirigamiaddons.formcard as FormCard
+import org.kde.kirigamiaddons.components as Components
 
-Kirigami.Card {
-    id: root
-    
-    property bool isRecurring: false
-    property string repeatInterval: "days"
-    property int repeatFrequency: 1
-    property date repeatStartDate: new Date()
-    property string repeatEndType: "never"
-    property date repeatEndDate: new Date()
-    property int repeatEndCount: 1
-    
-    // Function to reset all values
-    function reset() {
-        isRecurring = false;
-        repeatInterval = "days";
-        repeatFrequency = 1;
-        repeatStartDate = new Date();
-        repeatEndType = "never";
-        repeatEndDate = new Date();
-        repeatEndCount = 1;
+FormCard.FormCardDialog {
+    id: repeatSettingDialog
+    title: "Repeat Settings"
+
+    readonly property IntValidator intValidator: IntValidator {}
+    readonly property int maxValue: intValidator.top
+    readonly property int minValue: intValidator.bottom
+    required property var todoModel
+
+    property var repeatConfig: {}
+    property int taskId: -1
+    property string repeatEndConfig: "never"
+    property string repeatIntervalConfig: "days"
+
+    property var monthDays: []
+
+    standardButtons: Dialog.Save | Dialog.Cancel
+    onAccepted: {
+        updateRepeatConfig();
+    }
+    onRejected: {
+        repeatSettingDialog.close();
     }
     
-    // Function to load values from a task
-    function loadFromTask(task) {
-        if (task) {
-            isRecurring = task.isRecurring || false;
-            repeatInterval = task.repeatInterval || "days";
-            repeatFrequency = task.repeatFrequency || 1;
-            repeatStartDate = task.repeatStartDate || new Date();
-            repeatEndType = task.repeatEndType || "never";
-            repeatEndDate = task.repeatEndDate || new Date();
-            repeatEndCount = task.repeatEndCount || 1;
-        }
-    }
-    
-    ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: Kirigami.Units.smallSpacing
-        spacing: Kirigami.Units.largeSpacing
+    function loadConfig(taskId, config) {
+        this.taskId = taskId;
+        repeatConfig = JSON.parse(config);
         
-        // Header with repeat toggle
-        RowLayout {
-            Layout.fillWidth: true
-            
-            Kirigami.Icon {
-                source: "view-refresh"
-                Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                Layout.preferredHeight: Kirigami.Units.iconSizes.small
-            }
-            
-            Label {
-                Layout.fillWidth: true
-                text: "Repeat Settings"
-                font.bold: true
-            }
-            
-            Switch {
-                id: repeatSwitch
-                checked: root.isRecurring
-                onToggled: {
-                    root.isRecurring = checked;
+        // Set default values if properties are missing
+        if (!repeatConfig.interval) {
+            repeatConfig.interval = "days";
+        }
+        if (!repeatConfig.days) {
+            repeatConfig.days = [];
+        }
+        if (!repeatConfig.end) {
+            repeatConfig.end = "never";
+        }
+        
+        // Update the UI to reflect the loaded config
+        repeatIntervalConfig = repeatConfig.interval;
+        monthDays = repeatConfig.days;
+        repeatEndConfig = repeatConfig.end;
+    }
+
+    function setRepeatConfig(key, value) {
+        // Ensure repeatConfig is initialized
+        if (!repeatConfig) {
+            repeatConfig = {
+                interval: "days",
+                days: [],
+                end: "never"
+            };
+        }
+        repeatConfig[key] = value;
+        console.log('kumar', JSON.stringify(repeatConfig));
+
+        repeatSettingDialog.loadConfig(taskId, JSON.stringify(repeatConfig));
+    }
+
+    function updateRepeatConfig() {
+        console.log('kumar', JSON.stringify(repeatConfig));
+        todoModel.updateTask(taskId,  {repeatConfig: JSON.stringify(repeatConfig)})
+    }
+
+    FormCard.FormCard {
+
+        FormCard.AbstractFormDelegate {
+
+            contentItem: ColumnLayout {
+                Label {
+                    text: "Repeat every"
                 }
-            }
-        }
-        
-        // Repeat configuration (visible when repeat is enabled)
-        ColumnLayout {
-            Layout.fillWidth: true
-            visible: root.isRecurring
-            spacing: Kirigami.Units.smallSpacing
-            
-            Kirigami.FormLayout {
-                Layout.fillWidth: true
-                
-                // Repeat frequency and interval
                 RowLayout {
-                    Kirigami.FormData.label: "Repeat every:"
-                    Layout.fillWidth: true
-                    
                     SpinBox {
                         id: frequencySpinBox
                         from: 1
-                        to: 999
-                        value: root.repeatFrequency
+                        to: repeatSettingDialog.maxValue
+                        value: repeatSettingDialog.repeatConfig?.frequency || 1
                         onValueChanged: {
-                            root.repeatFrequency = value;
+                            repeatSettingDialog.setRepeatConfig('frequency', frequencySpinBox.value);
                         }
                     }
-                    
+
                     ComboBox {
-                        id: intervalCombo
-                        Layout.fillWidth: true
-                        
+                        id: intervalComboBox
                         model: [
-                            { text: "day(s)", value: "days" },
-                            { text: "week(s)", value: "weeks" },
-                            { text: "month(s)", value: "months" },
-                            { text: "year(s)", value: "years" }
+                            {
+                                text: "day",
+                                value: "days"
+                            },
+                            {
+                                text: "week",
+                                value: "weeks"
+                            },
+                            {
+                                text: "month",
+                                value: "months"
+                            },
+                            {
+                                text: "year",
+                                value: "years"
+                            }
                         ]
-                        
+                        currentIndex: {
+                            const index = model.findIndex(item => item.value === repeatSettingDialog.repeatIntervalConfig);
+                            return index >= 0 ? index : 0;
+                        }
                         textRole: "text"
                         valueRole: "value"
-                        
-                        currentIndex: {
-                            for (let i = 0; i < model.length; i++) {
-                                if (model[i].value === root.repeatInterval) {
-                                    return i;
-                                }
-                            }
-                            return 0;
-                        }
-                        
+
                         onActivated: {
-                            root.repeatInterval = model[currentIndex].value;
-                        }
-                    }
-                }
-                
-                // Start date
-                TextField {
-                    id: startDateField
-                    Kirigami.FormData.label: "Start date:"
-                    placeholderText: "YYYY-MM-DD"
-                    inputMask: "9999-99-99"
-                    text: {
-                        if (root.repeatStartDate) {
-                            let date = new Date(root.repeatStartDate);
-                            return date.getFullYear() + "-" + 
-                                   String(date.getMonth() + 1).padStart(2, '0') + "-" + 
-                                   String(date.getDate()).padStart(2, '0');
-                        }
-                        return "";
-                    }
-                    
-                    onTextChanged: {
-                        if (text.length === 10) {
-                            root.repeatStartDate = new Date(text);
-                        }
-                    }
-                }
-                
-                // End condition
-                ComboBox {
-                    id: endTypeCombo
-                    Kirigami.FormData.label: "End:"
-                    
-                    model: [
-                        { text: "Never", value: "never" },
-                        { text: "After", value: "after" },
-                        { text: "On date", value: "on" }
-                    ]
-                    
-                    textRole: "text"
-                    valueRole: "value"
-                    
-                    currentIndex: {
-                        for (let i = 0; i < model.length; i++) {
-                            if (model[i].value === root.repeatEndType) {
-                                return i;
-                            }
-                        }
-                        return 0;
-                    }
-                    
-                    onActivated: {
-                        root.repeatEndType = model[currentIndex].value;
-                    }
-                }
-                
-                // End count (visible when "After" is selected)
-                RowLayout {
-                    visible: root.repeatEndType === "after"
-                    Kirigami.FormData.label: "Occurrences:"
-                    
-                    SpinBox {
-                        id: endCountSpinBox
-                        from: 1
-                        to: 999
-                        value: root.repeatEndCount
-                        onValueChanged: {
-                            root.repeatEndCount = value;
-                        }
-                    }
-                    
-                    Label {
-                        text: "times"
-                        opacity: 0.7
-                    }
-                }
-                
-                // End date (visible when "On date" is selected)
-                TextField {
-                    id: endDateField
-                    visible: root.repeatEndType === "on"
-                    Kirigami.FormData.label: "End date:"
-                    placeholderText: "YYYY-MM-DD"
-                    inputMask: "9999-99-99"
-                    text: {
-                        if (root.repeatEndDate && root.repeatEndType === "on") {
-                            let date = new Date(root.repeatEndDate);
-                            return date.getFullYear() + "-" + 
-                                   String(date.getMonth() + 1).padStart(2, '0') + "-" + 
-                                   String(date.getDate()).padStart(2, '0');
-                        }
-                        return "";
-                    }
-                    
-                    onTextChanged: {
-                        if (text.length === 10) {
-                            root.repeatEndDate = new Date(text);
+                            repeatSettingDialog.setRepeatConfig('interval', intervalComboBox.currentValue);
                         }
                     }
                 }
             }
-            
-            // Preview text
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: previewLabel.implicitHeight + Kirigami.Units.smallSpacing * 2
-                color: Kirigami.Theme.alternateBackgroundColor
-                radius: Kirigami.Units.cornerRadius
-                
-                Label {
-                    id: previewLabel
-                    anchors.fill: parent
-                    anchors.margins: Kirigami.Units.smallSpacing
-                    
-                    text: {
-                        if (!root.isRecurring) return "";
-                        
-                        let preview = "Repeats every ";
-                        if (root.repeatFrequency > 1) {
-                            preview += root.repeatFrequency + " ";
+        }
+
+        FormCard.FormDelegateSeparator {}
+
+        FormCard.AbstractFormDelegate {
+            visible: repeatSettingDialog.repeatIntervalConfig === "weeks"
+            contentItem: Components.SegmentedButton {
+                actions: [
+                    Kirigami.Action {
+                        text: qsTr("S")
+
+                        checkable: true
+                        checked: repeatSettingDialog.repeatConfig?.days?.includes(0)
+                        onTriggered: {
+                            repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.filter(day => day !== 0));
+                            if (checked) {
+                                repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.push(0));
+                            }
                         }
-                        
-                        switch (root.repeatInterval) {
-                        case "days":
-                            preview += root.repeatFrequency === 1 ? "day" : "days";
-                            break;
-                        case "weeks":
-                            preview += root.repeatFrequency === 1 ? "week" : "weeks";
-                            break;
-                        case "months":
-                            preview += root.repeatFrequency === 1 ? "month" : "months";
-                            break;
-                        case "years":
-                            preview += root.repeatFrequency === 1 ? "year" : "years";
-                            break;
+                    },
+                    Kirigami.Action {
+                        text: qsTr("M")
+                        checkable: true
+                        checked: repeatSettingDialog.repeatConfig?.days?.includes(1)
+                        onTriggered: {
+                            repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.filter(day => day !== 1));
+                            if (checked) {
+                                repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.push(1));
+                            }
                         }
-                        
-                        if (root.repeatEndType === "after") {
-                            preview += ", " + root.repeatEndCount + " times";
-                        } else if (root.repeatEndType === "on") {
-                            preview += ", until " + Qt.formatDate(root.repeatEndDate, "MMM dd, yyyy");
+                    },
+                    Kirigami.Action {
+                        text: qsTr("T")
+                        checkable: true
+                        checked: repeatSettingDialog.repeatConfig?.days?.includes(2)
+                        onTriggered: {
+                            repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.filter(day => day !== 2));
+                            if (checked) {
+                                repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.push(2));
+                            }
                         }
-                        
-                        return preview;
+                    },
+                    Kirigami.Action {
+                        text: qsTr("W")
+                        checkable: true
+                        checked: repeatSettingDialog.repeatConfig?.days?.includes(3)
+                        onTriggered: {
+                            repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.filter(day => day !== 3));
+                            if (checked) {
+                                repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.push(3));
+                            }
+                        }
+                    },
+                    Kirigami.Action {
+                        text: qsTr("T")
+                        checkable: true
+                        checked: repeatSettingDialog.repeatConfig?.days?.includes(4)
+                        onTriggered: {
+                            repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.filter(day => day !== 4));
+                            if (checked) {
+                                repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.push(4));
+                            }
+                        }
+                    },
+                    Kirigami.Action {
+                        text: qsTr("F")
+                        checkable: true
+                        checked: repeatSettingDialog.repeatConfig?.days?.includes(5)
+                        onTriggered: {
+                            repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.filter(day => day !== 5));
+                            if (checked) {
+                                repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.push(5));
+                            }
+                        }
+                    },
+                    Kirigami.Action {
+                        text: qsTr("S")
+                        checkable: true
+                        checked: repeatSettingDialog.repeatConfig?.days?.includes(6)
+                        onTriggered: {
+                            repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.filter(day => day !== 6));
+                            if (checked) {
+                                repeatSettingDialog.setRepeatConfig('days', repeatSettingDialog.repeatConfig.days.push(6));
+                            }
+                        }
                     }
-                    
-                    wrapMode: Text.WordWrap
-                    opacity: 0.8
-                    font.pointSize: Kirigami.Theme.smallFont.pointSize
+                ]
+            }
+        }
+
+        FormCard.FormDelegateSeparator {}
+
+        FormCard.FormComboBoxDelegate {
+            id: dayOfMonthComboBox
+            visible: repeatSettingDialog.repeatIntervalConfig === "months"
+            model: monthDaysModel
+            textRole: "text"
+            valueRole: "value"
+            currentIndex: {
+                if (!repeatSettingDialog.repeatConfig?.day)
+                    return 0;
+                if (repeatSettingDialog.repeatConfig.day === "month_end")
+                    return 0;
+                return repeatSettingDialog.repeatConfig?.day || 0;
+            }
+            onActivated: repeatSettingDialog.setRepeatConfig('day', dayOfMonthComboBox.currentValue)
+
+            ListModel {
+                id: monthDaysModel
+
+                ListElement {
+                    text: "Month End"
+                    value: "month_end"
                 }
+            }
+
+            Component.onCompleted: {
+                for (let i = 1; i <= 31; i++) {
+                    monthDaysModel.append({
+                        text: `Day ${i}`,
+                        value: i
+                    });
+                }
+            }
+        }
+
+        FormCard.FormDateTimeDelegate {
+            dateTimeDisplay: FormCard.FormDateTimeDelegate.DateTimeDisplay.Time
+            onValueChanged: {
+                repeatSettingDialog.setRepeatConfig('time', value);
+            }
+        }
+
+        FormCard.FormDelegateSeparator {}
+
+        FormCard.FormDateTimeDelegate {
+            text: "Start From"
+            dateTimeDisplay: FormCard.FormDateTimeDelegate.DateTimeDisplay.Date
+            onValueChanged: {
+                repeatSettingDialog.setRepeatConfig('start', value);
+            }
+        }
+
+        FormCard.FormDelegateSeparator {}
+
+        FormCard.FormRadioSelectorDelegate {
+            text: "Ends On"
+            actions: [
+                Kirigami.Action {
+                    text: qsTr("Never")
+                    onTriggered: {
+                        repeatSettingDialog.setRepeatConfig('end', "never");
+                        repeatSettingDialog.repeatEndConfig = "never";
+                    }
+                },
+                Kirigami.Action {
+                    text: qsTr("After")
+                    onTriggered: {
+                        repeatSettingDialog.setRepeatConfig('end', "after");
+                        repeatSettingDialog.repeatEndConfig = "after";
+                    }
+                },
+                Kirigami.Action {
+                    text: qsTr("On date")
+                    onTriggered: {
+                        repeatSettingDialog.setRepeatConfig('end', "on");
+                        repeatSettingDialog.repeatEndConfig = "on";
+                    }
+                }
+            ]
+        }
+
+        FormCard.FormSpinBoxDelegate {
+            visible: repeatSettingDialog.repeatEndConfig === "after"
+            label: 'After'
+            from: 1
+            to: repeatSettingDialog.maxValue
+            value: repeatSettingDialog.repeatConfig.after
+            onValueChanged: {
+                repeatSettingDialog.setRepeatConfig('after', value);
+            }
+        }
+
+        FormCard.FormDateTimeDelegate {
+            visible: repeatSettingDialog.repeatEndConfig === "on"
+            text: "End On"
+            dateTimeDisplay: FormCard.FormDateTimeDelegate.DateTimeDisplay.Date
+            onValueChanged: {
+                repeatSettingDialog.setRepeatConfig('on', value);
             }
         }
     }

@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Todoist
+Name=TodoApp
 GenericName=Task Manager
 Comment=A modern task management application
 Exec=/home/kumar/Projects/todoist/build/bin/todoist

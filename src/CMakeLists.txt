@@ -33,17 +33,23 @@ target_sources(todoist_static PUBLIC
     databasemanager.cpp
     task.cpp
     project.cpp
-    label.cpp
+    # label.cpp
     systemtraymanager.cpp
+    appsettings.cpp
+    duedate.cpp
+    notificationmanager.cpp
 
     todomodel.h
     projectmodel.h
-    labelmodel.h
+    # labelmodel.h
     databasemanager.h
     task.h
     project.h
     label.h
     systemtraymanager.h
+    appsettings.h
+    duedate.h
+    notificationmanager.h
 )
 
 target_link_libraries(todoist_static PUBLIC
@@ -61,6 +67,7 @@ target_link_libraries(todoist_static PUBLIC
     KF6::ConfigCore
     KF6::ConfigGui
     KF6::Kirigami
+    KF6::Notifications
 
 )
 target_include_directories(todoist_static PUBLIC ${CMAKE_BINARY_DIR})

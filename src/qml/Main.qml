@@ -18,6 +18,17 @@ Kirigami.ApplicationWindow {
     property var addTaskDialog: null
     property var addProjectDialog: null
 
+    // Settings backend
+    AppSettings {
+        id: settings
+    }
+
+    // Restore window size from settings and persist on changes
+    width: settings.windowWidth
+    height: settings.windowHeight
+    onWidthChanged: settings.windowWidth = width
+    onHeightChanged: settings.windowHeight = height
+
     readonly property int sidebarWidth: Kirigami.Units.gridUnit * 14
 
     property alias pomodoroManager: pomodoroManager
@@ -39,6 +50,8 @@ Kirigami.ApplicationWindow {
         root.todoModel = todoModel;
         root.addTaskDialog = addTaskDialog;
         root.addProjectDialog = addProjectDialog;
+
+        root.raise();
     }
 
     globalDrawer: ProjectSidebar {
@@ -46,11 +59,15 @@ Kirigami.ApplicationWindow {
         width: root.sidebarWidth
         projectModel: root.projectModel
         addProjectDialog: root.addProjectDialog
+        modal: !root.wideScreen
+        lastSelectedProjectId: settings.lastSelectedProjectId
+
 
         onProjectSelected: function (projectId) {
             root.currentProjectId = projectId;
             todoModel.currentProjectId = projectId;
             todoModel.currentFilter = "";
+            settings.lastSelectedProjectId = projectId;
             root.applicationWindow().pageStack.clear();
             root.applicationWindow().pageStack.push(taskListComponent);
         }
@@ -68,7 +85,12 @@ Kirigami.ApplicationWindow {
         id: taskDetailPageComponent
         TaskDetailPage {
             todoModel: root.todoModel
+
+            onFocusRequested: {
+                sidebar.visible = false;
+            }
         }
+        
     }
 
     pageStack.initialPage: taskListComponent
@@ -79,9 +101,10 @@ Kirigami.ApplicationWindow {
         projectModel: root.projectModel
         addTaskDialog: root.addTaskDialog
 
-        onTaskSelected: function (task) {
+        onTaskSelected: function (task, isTimerRequested) {
             let taskDetailPage = taskDetailPageComponent.createObject(root);
             taskDetailPage.loadTask(task);
+            taskDetailPage.isTimerRequested = isTimerRequested;
             root.pageStack.layers.push(taskDetailPage);
         }
     }
@@ -99,6 +122,18 @@ Kirigami.ApplicationWindow {
             projectModel.refresh();
         }
     }
+
+
+
+    SystemTrayManager {
+        id: systemTrayManager
+        todoModel: todoModel
+
+        Component.onCompleted: {
+            systemTrayManager.checkReminders();
+        }
+    }
+
 
     // SystemTrayManager {
     //     id: systemTray
